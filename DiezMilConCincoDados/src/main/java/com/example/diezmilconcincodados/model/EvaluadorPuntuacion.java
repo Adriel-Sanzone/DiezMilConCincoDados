@@ -5,40 +5,53 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-public class EvaluadorPuntuacion implements Serializable {
+public class EvaluadorPuntuacion implements Serializable
+{
     private static final long serialVersionUID = 1L;
 
-    public static boolean hayCombinacionValida(int[] roll) {
-        if (roll == null || roll.length != 5) {
+    public static boolean hayCombinacionValida(int[] roll)
+    {
+        if (roll == null || roll.length != 5)
+        {
             return false;
         }
+
         if (esEscalera(roll)) return true;
+
         Map<Integer, Integer> counts = contarPorValor(roll);
+
         if (counts.getOrDefault(1, 0) >= 1) return true;
         if (counts.getOrDefault(5, 0) >= 1) return true;
-        for (int v = 1; v <= 6; v++) {
+
+        for (int v = 1; v <= 6; v++)
+        {
             if (counts.getOrDefault(v, 0) >= 3) return true;
         }
         return false;
     }
 
-    public static int calcularPuntosPorSeleccion(int[] roll, List<Integer> indicesSeleccionados) {
-        if (roll == null || roll.length != 5) {
+    public static int calcularPuntosPorSeleccion(int[] roll, List<Integer> indicesSeleccionados)
+    {
+        if (roll == null || roll.length != 5)
+        {
             return -1;
         }
-        if (indicesSeleccionados == null || indicesSeleccionados.isEmpty()) {
+        if (indicesSeleccionados == null || indicesSeleccionados.isEmpty())
+        {
             return -1;
         }
 
         List<Integer> indices = indicesSeleccionados.stream().sorted().distinct().collect(Collectors.toList());
 
-        for (int idx : indices) {
+        for (int idx : indices)
+        {
             if (idx < 0 || idx >= 5) return -1;
         }
 
         int[] selectedValues = indices.stream().mapToInt(i -> roll[i]).toArray();
 
-        if (indices.size() == 5 && esCincoUnos(selectedValues)) {
+        if (indices.size() == 5 && esCincoUnos(selectedValues))
+        {
             return 10000;
         }
 
@@ -48,7 +61,6 @@ public class EvaluadorPuntuacion implements Serializable {
 
         Map<Integer, Integer> countsSel = contarPorValor(selectedValues);
 
-        // Validación sin excepciones
         for (Map.Entry<Integer, Integer> e : countsSel.entrySet()) {
             int valor = e.getKey();
             int cnt = e.getValue();
@@ -67,25 +79,33 @@ public class EvaluadorPuntuacion implements Serializable {
 
         int puntos = 0;
 
-        for (Map.Entry<Integer, Integer> e : countsSel.entrySet()) {
+        for (Map.Entry<Integer, Integer> e : countsSel.entrySet())
+        {
             int valor = e.getKey();
             int cnt = e.getValue();
 
-            if (valor == 1) {
-                if (cnt >= 3) {
+            if (valor == 1)
+            {
+                if (cnt >= 3)
+                {
                     puntos += 1000;
                     puntos += 100 * (cnt - 3);
-                } else {
+                } else
+                {
                     puntos += 100 * cnt;
                 }
-            } else if (valor == 5) {
-                if (cnt >= 3) {
+            } else if (valor == 5)
+            {
+                if (cnt >= 3)
+                {
                     puntos += 500;
                     puntos += 50 * (cnt - 3);
-                } else {
+                } else
+                {
                     puntos += 50 * cnt;
                 }
-            } else {
+            } else
+            {
                 puntos += puntosTresIguales(valor);
             }
         }
@@ -94,26 +114,30 @@ public class EvaluadorPuntuacion implements Serializable {
     }
 
 
-    private static boolean esCincoUnos(int[] roll) {
+    private static boolean esCincoUnos(int[] roll)
+    {
         if (roll == null || roll.length != 5) return false;
         for (int v : roll) if (v != 1) return false;
         return true;
     }
 
-    private static Map<Integer, Integer> contarPorValor(int[] roll) {
+    private static Map<Integer, Integer> contarPorValor(int[] roll)
+    {
         Map<Integer, Integer> counts = new HashMap<>();
         for (int v : roll) counts.put(v, counts.getOrDefault(v, 0) + 1);
         return counts;
     }
 
-    private static boolean esEscalera(int[] roll) {
+    private static boolean esEscalera(int[] roll)
+    {
         Set<Integer> s = Arrays.stream(roll).boxed().collect(Collectors.toSet());
         Set<Integer> e1 = new HashSet<>(Arrays.asList(1,2,3,4,5));
         Set<Integer> e2 = new HashSet<>(Arrays.asList(2,3,4,5,6));
         return s.equals(e1) || s.equals(e2);
     }
 
-    private static int puntosTresIguales(int valor) {
+    private static int puntosTresIguales(int valor)
+    {
         if (valor == 1) return 1000;
         return valor * 100;
     }

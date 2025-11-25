@@ -9,101 +9,132 @@ import com.example.diezmilconcincodados.vista.VistaJuegoConsola;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ControladorConsolaEnJuego implements Observador {
+public class ControladorConsolaEnJuego implements Observador
+{
     private final Juego juego;
     private final VistaJuegoConsola vista;
 
-    public ControladorConsolaEnJuego(Juego juego, VistaJuegoConsola vista) {
+    public ControladorConsolaEnJuego(Juego juego, VistaJuegoConsola vista)
+    {
         this.juego = juego;
         this.vista = vista;
     }
 
-    public void ejecutarLoopPartida() {
+    public void ejecutarLoopPartida()
+    {
         juego.agregarObservador(this);
-        try {
+
+        try
+        {
             boolean volverAlMenu = false;
-            while (!volverAlMenu && !juego.isFinalizado()) {
-                if (juego.getTurnoActual() == null) {
+            while (!volverAlMenu && !juego.isFinalizado())
+
+            {
+                if (juego.getTurnoActual() == null)
+                {
                     juego.iniciarNuevoTurno();
                 }
                 Jugador actual = juego.getJugadorActual();
                 boolean turnoTerminado = false;
-                while (!turnoTerminado && !volverAlMenu && !juego.isFinalizado()) {
+                while (!turnoTerminado && !volverAlMenu && !juego.isFinalizado())
+                {
                     int opcion = vista.mostrarMenuJugador(actual.getNombre());
-                    switch (opcion) {
-                        case 1 -> {
+                    switch (opcion)
+                    {
+                        case 1 ->
+                        {
                             Turno turno = juego.getTurnoActual();
-                            if (turno == null) {
-                                vista.mostrarMensaje("No hay turno inicializado.");
+                            if (turno == null)
+                            {
+                                vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: No hay turno inicializado.");
                                 continue;
                             }
-                            if (turno.yaLanze()) {
-                                vista.mostrarMensaje("ERROR: Ya lanzaste en este turno. Primero seleccioná o plantate.");
+                            if (turno.yaLanze())
+                            {
+                                vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Ya lanzaste en este turno. Primero seleccioná o plantate.");
                                 continue;
                             }
                             int res = juego.lanzarTurnoActual();
-                            if (res < 0) {
-                                vista.mostrarMensaje("Bust: no obtuvo combinaciones. Turno perdido.");
+                            if (res < 0)
+                            {
+                                vista.mostrarMensaje("\u001B[31mBUST\u001B[0m: no obtuvo combinaciones. Turno perdido.");
                                 turnoTerminado = true;
-                            } else {
+                            } else
+                            {
                                 Turno t = juego.getTurnoActual();
                                 vista.mostrarDadosFormateados(t.getUltimoLanzamiento(), t.getUltimoLanzamientoCount());
                             }
                         }
-                        case 2 -> {
+                        case 2 ->
+                        {
                             Turno turno = juego.getTurnoActual();
-                            if (turno == null || !turno.yaLanze()) {
-                                vista.mostrarMensaje("Debe lanzar los dados antes de seleccionar.");
+                            if (turno == null || !turno.yaLanze())
+                            {
+                                vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Debe lanzar los dados antes de seleccionar.");
                                 continue;
                             }
                             int[] indices = vista.leerIndicesSeleccion();
-                            if (indices.length == 0) {
-                                vista.mostrarMensaje("Selección cancelada.");
+                            if (indices.length == 0)
+                            {
+                                vista.mostrarMensaje("\u001B[33mSelección cancelada.\u001B[0m");
                                 continue;
                             }
                             List<Integer> seleccion = new ArrayList<>();
-                            for (int idx : indices) {
-                                if (idx < 0 || idx >= turno.getUltimoLanzamientoCount()) {
-                                    vista.mostrarMensaje("Índice fuera de rango");
+                            for (int idx : indices)
+                            {
+                                if (idx < 0 || idx >= turno.getUltimoLanzamientoCount())
+                                {
+                                    vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Índice fuera de rango");
                                     seleccion = null;
                                     break;
                                 }
                                 seleccion.add(idx);
                             }
                             int puntos = juego.aplicarSeleccionEnTurno(seleccion);
-                            if (puntos < 0) {
-                                vista.mostrarMensaje("Selección inválida. No se aplicaron cambios. Verifique que eligió combinaciones puntuables.");
-                                continue; // volver al menú de turno sin cambiar nada
+                            if (puntos < 0)
+                            {
+                                vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Selección inválida. Verifique que eligió combinaciones puntuables.");
+                                continue;
                             }
-                            vista.mostrarMensaje("Selección aplicada. Puntos ganados en esta selección: " + puntos);
+                            vista.mostrarMensaje("Selección aplicada. Puntos ganados en esta selección: \u001B[32m" + puntos + "\u001B[0m");
                             Turno t = juego.getTurnoActual();
-                            if (t != null && t.getUltimoLanzamientoCount() > 0) {
+                            if (t != null && t.getUltimoLanzamientoCount() > 0)
+                            {
                                 vista.mostrarDadosFormateados(t.getUltimoLanzamiento(), t.getUltimoLanzamientoCount());
                             }
                         }
                         case 3 -> {
-                            if (juego.getTurnoActual() == null) {
-                                vista.mostrarMensaje("No hay turno activo para plantarse.");
-                            } else {
-                                juego.plantarseEnTurno();
-                                if (!juego.isFinalizado()) {
-                                    vista.mostrarMensaje("Se plantó y se guardaron los puntos. Avanza el turno.");
+                            if (juego.getTurnoActual() == null)
+                            {
+                                vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: No hay turno activo para plantarse.");
+                            } else
+                            {
+                                int ganados = juego.plantarseEnTurno();
+                                if (ganados >= 0)
+                                {
+                                    vista.mostrarMensaje("Se plantó y se guardaron los puntos (+\u001B[32m" + ganados + "\u001B[0m). Avanza el turno.");
+                                } else
+                                {
+                                    vista.mostrarMensaje("Se plantó. Avanza el turno.");
                                 }
                                 turnoTerminado = true;
                             }
                         }
-                        case 4 -> {
+                        case 4 ->
+                        {
                             vista.mostrarEstadoJuego(juego);
                         }
-                        case 5 -> {
+                        case 5 ->
+                        {
                             volverAlMenu = true;
-                            vista.mostrarMensaje("Volviendo al menú principal. Partida pausada.");
+                            vista.mostrarMensaje("Volviendo al menú principal. \u001B[33mPartida pausada.\u001B[0m");
                         }
-                        default -> vista.mostrarMensaje("Opción no válida.");
+                        default -> vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Opción no válida.");
                     }
                 }
             }
-        } finally {
+        } finally
+        {
             juego.quitarObservador(this);
         }
     }

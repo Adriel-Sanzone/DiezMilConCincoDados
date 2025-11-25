@@ -11,16 +11,16 @@ public class VistaMenuConsola {
 
     public int mostrarMenuPrincipal() {
         System.out.println("\n--------------------------------");
-        System.out.println("    DIEZ MIL CON CINCO DADOS    ");
+        System.out.println("  \u001B[42m  \u001B[1m\u001B[30mDIEZ MIL CON CINCO DADOS  \u001B[0m  ");
         System.out.println("--------------------------------");
-        System.out.println("[1] Iniciar/Continuar partida");
-        System.out.println("[2] Agregar jugador");
-        System.out.println("[3] Eliminar jugador");
-        System.out.println("[4] Ver estado de partida");
-        System.out.println("[5] Guardar partida");
-        System.out.println("[6] Cargar partida");
-        System.out.println("[7] Instrucciones");
-        System.out.println("[0] Salir");
+        System.out.println("\u001B[1m\u001B[32m[1]\u001B[0m Iniciar/Continuar partida");
+        System.out.println("\u001B[1m\u001B[32m[2]\u001B[0m Agregar jugador");
+        System.out.println("\u001B[1m\u001B[32m[3]\u001B[0m Eliminar jugador");
+        System.out.println("\u001B[1m\u001B[32m[4]\u001B[0m Ver estado de partida");
+        System.out.println("\u001B[1m\u001B[32m[5]\u001B[0m Guardar partida");
+        System.out.println("\u001B[1m\u001B[32m[6]\u001B[0m Cargar partida");
+        System.out.println("\u001B[1m\u001B[32m[7]\u001B[0m Instrucciones");
+        System.out.println("\u001B[1m\u001B[32m[0]\u001B[0m Salir");
         System.out.print(">> ");
         return leerEnteroSeguro();
     }
@@ -59,7 +59,7 @@ public class VistaMenuConsola {
 
     public void mostrarInstrucciones() {
         System.out.println("================================================================");
-        System.out.println("  --- INSTRUCCIONES DEL JUEGO ---            ");
+        System.out.println("  \u001B[44m  \u001B[1mINSTRUCCIONES DEL JUEGO  \u001B[0m              ");
         System.out.println("El objetivo es llegar a 10000 puntos.");
         System.out.println("En tu turno lanzas cinco dados. Solo puedes sumar puntos");
         System.out.println("si seleccionas combinaciones válidas:");
@@ -76,13 +76,17 @@ public class VistaMenuConsola {
         System.out.println("================================================================");
     }
 
-    private int leerEnteroSeguro() {
-        while (true) {
+    private int leerEnteroSeguro()
+    {
+        while (true)
+        {
             String s = sc.nextLine();
-            try {
+            try
+            {
                 return Integer.parseInt(s.trim());
-            } catch (NumberFormatException e) {
-                System.out.print("Entrada no válida. Ingrese un número:\n>> ");
+            } catch (NumberFormatException e)
+            {
+                System.out.print("\u001B[31mERROR\u001B[0m: Debe ingresar un numero\n>> ");
             }
         }
     }

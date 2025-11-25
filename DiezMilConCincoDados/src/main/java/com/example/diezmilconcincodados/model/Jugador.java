@@ -4,7 +4,8 @@ import java.io.Serializable;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Jugador implements Serializable {
+public class Jugador implements Serializable
+{
     private static final long serialVersionUID = 1L;
 
     private static final AtomicInteger NEXT_ID = new AtomicInteger(1);
@@ -13,27 +14,32 @@ public class Jugador implements Serializable {
     private final String nombre;
     private int puntosTotales;
 
-    public Jugador(String nombre) {
+    public Jugador(String nombre)
+    {
         this.id = NEXT_ID.getAndIncrement();
         this.nombre = nombre;
         this.puntosTotales = 0;
     }
 
-    public String getNombre() {
+    public String getNombre()
+    {
         return nombre;
     }
 
-    public int getPuntosTotales() {
+    public int getPuntosTotales()
+    {
         return puntosTotales;
     }
 
-    public void sumarPuntos(int puntos) {
+    public void sumarPuntos(int puntos)
+    {
         if (puntos < 0) throw new IllegalArgumentException("puntos no puede ser negativo");
         this.puntosTotales += puntos;
     }
 
     @Override
-    public String toString() {
+    public String toString()
+    {
         return "Jugador{" +
                 "id=" + id +
                 ", nombre='" + nombre + '\'' +
@@ -42,7 +48,8 @@ public class Jugador implements Serializable {
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(Object o)
+    {
         if (this == o) return true;
         if (!(o instanceof Jugador)) return false;
         Jugador jugador = (Jugador) o;
@@ -50,7 +57,8 @@ public class Jugador implements Serializable {
     }
 
     @Override
-    public int hashCode() {
+    public int hashCode()
+    {
         return Objects.hash(id);
     }
 }

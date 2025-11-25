@@ -19,20 +19,26 @@ public class Juego implements Observable, Serializable {
     private final CuboDados cubo = new CuboDados();
     private boolean finalizado = false;
 
-    public Juego() {
+    public Juego()
+    {
         observadores = new ArrayList<>();
     }
 
-    public void agregarJugador(Jugador j) {
+    public void agregarJugador(Jugador j)
+    {
         jugadores.add(j);
         notificarObservadores();
     }
 
-    public boolean eliminarJugador(String nombre) {
+    public boolean eliminarJugador(String nombre)
+    {
         if (nombre == null || nombre.isEmpty()) return false;
         int idxElim = -1;
-        for (int i = 0; i < jugadores.size(); i++) {
-            if (jugadores.get(i).getNombre().equalsIgnoreCase(nombre)) {
+
+        for (int i = 0; i < jugadores.size(); i++)
+        {
+            if (jugadores.get(i).getNombre().equalsIgnoreCase(nombre))
+            {
                 idxElim = i;
                 break;
             }
@@ -42,47 +48,60 @@ public class Juego implements Observable, Serializable {
         Jugador eliminado = jugadores.get(idxElim);
         jugadores.remove(idxElim);
 
-        if (jugadores.isEmpty()) {
+        if (jugadores.isEmpty())
+        {
             turnoActual = null;
             indiceJugadorActual = 0;
-        } else {
-            if (turnoActual != null && turnoActual.getJugador().equals(eliminado)) {
+        } else
+        {
+            if (turnoActual != null && turnoActual.getJugador().equals(eliminado))
+            {
                 turnoActual = null;
             }
-            if (idxElim < indiceJugadorActual) {
+            if (idxElim < indiceJugadorActual)
+            {
                 indiceJugadorActual = Math.max(0, indiceJugadorActual - 1);
-            } else if (idxElim == indiceJugadorActual) {
+            } else if (idxElim == indiceJugadorActual)
+            {
                 indiceJugadorActual = indiceJugadorActual % jugadores.size();
             }
         }
         notificarObservadores();
+
         return true;
     }
 
-    public List<Jugador> getJugadores() {
+    public List<Jugador> getJugadores()
+    {
         return new ArrayList<>(jugadores);
     }
 
-    public Jugador getJugadorActual() {
+    public Jugador getJugadorActual()
+    {
         return jugadores.get(indiceJugadorActual);
     }
 
-    public Turno getTurnoActual() {
+    public Turno getTurnoActual()
+    {
         return turnoActual;
     }
 
-    public boolean iniciarNuevoTurno() {
+    public boolean iniciarNuevoTurno()
+    {
         if (finalizado) return false;
+
         Jugador j = getJugadorActual();
         turnoActual = new Turno(j);
         notificarObservadores();
         return true;
     }
 
-    public int lanzarTurnoActual() {
+    public int lanzarTurnoActual()
+    {
         boolean hay = turnoActual.lanzar(cubo);
         notificarObservadores();
-        if (!hay) {
+        if (!hay)
+        {
             int perdidos = turnoActual.plantarse();
             avanzarTurnoSinSumar();
             return -1;
@@ -90,26 +109,34 @@ public class Juego implements Observable, Serializable {
         return 1;
     }
 
-    public int aplicarSeleccionEnTurno(List<Integer> indicesSeleccionados) {
+    public int aplicarSeleccionEnTurno(List<Integer> indicesSeleccionados)
+    {
         int puntos = turnoActual.aplicarSeleccion(indicesSeleccionados);
         if (puntos >= 0) notificarObservadores();
         return puntos;
     }
 
-    public void plantarseEnTurno() {
+    public int plantarseEnTurno()
+    {
         int ganados = turnoActual.plantarse();
         Jugador j = turnoActual.getJugador();
         j.sumarPuntos(ganados);
-        if (j.getPuntosTotales() >= 10000) {
+
+        if (j.getPuntosTotales() >= 10000)
+        {
             finalizado = true;
-        } else {
+        } else
+        {
             avanzarTurnoSinSumar();
         }
         notificarObservadores();
+        return ganados;
     }
 
-    private void avanzarTurnoSinSumar() {
-        if (jugadores.isEmpty()) {
+    private void avanzarTurnoSinSumar()
+    {
+        if (jugadores.isEmpty())
+        {
             turnoActual = null;
             indiceJugadorActual = 0;
             notificarObservadores();
@@ -120,47 +147,60 @@ public class Juego implements Observable, Serializable {
         notificarObservadores();
     }
 
-    public boolean isFinalizado() {
+    public boolean isFinalizado()
+    {
         return finalizado;
     }
 
-    public void guardarPartida(File f) {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(f))) {
+    public void guardarPartida(File f)
+    {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(f)))
+        {
             oos.writeObject(this);
         } catch (Exception ignored) {
         }
     }
 
-    public static Juego cargarPartida(File f) {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
+    public static Juego cargarPartida(File f)
+    {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f)))
+        {
             Object o = ois.readObject();
             if (!(o instanceof Juego)) return null;
+
             Juego j = (Juego) o;
             return j;
-        } catch (Exception e) {
+
+        } catch (Exception e)
+        {
             return null;
         }
     }
 
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException
+    {
         in.defaultReadObject();
         observadores = new ArrayList<>();
     }
 
     @Override
-    public void agregarObservador(Observador observador) {
+    public void agregarObservador(Observador observador)
+    {
         observadores.add(observador);
     }
 
     @Override
-    public void quitarObservador(Observador observador) {
+    public void quitarObservador(Observador observador)
+    {
         observadores.remove(observador);
     }
 
     @Override
-    public void notificarObservadores() {
+    public void notificarObservadores()
+    {
         List<Observador> copia = new ArrayList<>(observadores);
-        for (Observador o : copia) {
+        for (Observador o : copia)
+        {
             o.actualizar();
         }
     }

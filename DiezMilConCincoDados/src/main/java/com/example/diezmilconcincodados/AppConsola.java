@@ -11,32 +11,37 @@ public class AppConsola {
     public static void main(String[] args) {
 
         File saveFile = new File("partida.b");
-
         Juego juego;
-        if (saveFile.exists()) {
-            try {
+
+        if (saveFile.exists())
+        {
+            try
+            {
                 juego = Juego.cargarPartida(saveFile);
-                System.out.println("\nSe cargó la partida \"" + saveFile.getName() + "\" automáticamente...");
-            } catch (Exception e) {
+                System.out.println("\nSe cargó la partida \u001B[33m" + saveFile.getName() + "\u001B[0m automáticamente...");
+            } catch (Exception e)
+            {
                 System.err.println("No se pudo cargar la partida (archivo corrupto o incompatible). Se iniciará una nueva partida.");
                 juego = new Juego();
             }
-        } else {
+        } else
+        {
             juego = new Juego();
         }
 
         VistaMenuConsola vistaMenu = new VistaMenuConsola();
         VistaJuegoConsola vistaJuego = new VistaJuegoConsola();
 
-        ControladorConsolaMain controlador =
-                new ControladorConsolaMain(juego, vistaMenu, vistaJuego);
+        ControladorConsolaMain controlador = new ControladorConsolaMain(juego, vistaMenu, vistaJuego);
 
         controlador.ejecutarLoopPrincipal();
 
-        try {
+        try
+        {
             juego.guardarPartida(saveFile);
-            System.out.println("Partida guardada automáticamente en " + saveFile.getName());
-        } catch (Exception e) {
+            System.out.println("Partida guardada automáticamente en \u001B[33m" + saveFile.getName() + "\u001B[0m");
+        } catch (Exception e)
+        {
             System.err.println("Error al guardar la partida al salir: " + e.getMessage());
         }
     }
