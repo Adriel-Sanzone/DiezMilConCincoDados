@@ -1,0 +1,6 @@
+.conFondo{
+-fx-background-image: url('../Images/fondo.jpg')
+-fx-background-size: cover;
+-fx-background-size-position: center center;
+
+}
