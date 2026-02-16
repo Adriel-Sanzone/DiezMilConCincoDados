@@ -1,8 +1,7 @@
 package com.example.diezmilconcincodados.vista;
 
 import com.example.diezmilconcincodados.vista.VistaEstadoJuego;
-import com.example.diezmilconcincodados.model.Juego;
-
+import java.util.List;
 import java.util.Scanner;
 
 public class VistaJuegoConsola {
@@ -23,19 +22,19 @@ public class VistaJuegoConsola {
         return leerEnteroSeguro();
     }
 
-    public void mostrarDadosFormateados(int[] dados, int cantidad)
-    {
+    public void mostrarDadosFormateados(int[] dados, int cantidad) {
         System.out.println("---------------------");
         System.out.println("\u001B[41m \u001B[1m\u001B[30mDADOS \u001B[0m ");
 
-        for (int i = 0; i < cantidad; i++)
-        {
+        // Imprimir valores de dados
+        for (int i = 0; i < cantidad; i++) {
             System.out.print("[" + dados[i] + "]\t");
         }
         System.out.println();
+
+        // Imprimir numeración
         System.out.print(" ");
-        for (int i = 0; i < cantidad; i++)
-        {
+        for (int i = 0; i < cantidad; i++) {
             System.out.print((i + 1) + "\t ");
         }
         System.out.println("\n---------------------");
@@ -70,9 +69,17 @@ public class VistaJuegoConsola {
         System.out.println(mensaje);
     }
 
-    public void mostrarEstadoJuego(Juego juego)
-    {
-        estadoView.mostrarEstadoJuego(juego);
+    public void mostrarEstadoJuegoActualizado(
+            List<String> nombresJugadores,
+            List<Integer> puntosJugadores,
+            String nombreJugadorActual,
+            int puntosAcumuladosTurno,
+            int dadosRestantes,
+            int[] ultimoLanzamiento,
+            int ultimoLanzamientoCount,
+            boolean hayTurnoActivo
+    ) {
+        estadoView.mostrarEstadoJuego(nombresJugadores, puntosJugadores, nombreJugadorActual, puntosAcumuladosTurno, dadosRestantes, ultimoLanzamiento, ultimoLanzamientoCount, hayTurnoActivo);
     }
 
     private int leerEnteroSeguro()

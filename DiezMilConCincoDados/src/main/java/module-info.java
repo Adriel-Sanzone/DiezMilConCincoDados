@@ -1,6 +1,5 @@
 module com.example.diezmilconcincodados {
-    requires javafx.controls;
-    requires javafx.fxml;
+
     requires jdk.javadoc;
 
 

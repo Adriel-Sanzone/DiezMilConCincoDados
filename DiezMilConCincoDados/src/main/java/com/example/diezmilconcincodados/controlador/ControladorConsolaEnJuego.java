@@ -23,16 +23,25 @@ public class ControladorConsolaEnJuego implements Observador
     public void ejecutarLoopPartida()
     {
         juego.agregarObservador(this);
+        actualizar();
 
         try
         {
             boolean volverAlMenu = false;
             while (!volverAlMenu && !juego.isFinalizado())
-
             {
-                if (juego.getTurnoActual() == null)
-                {
-                    juego.iniciarNuevoTurno();
+                if (juego.getJugadores().isEmpty()) {
+                    vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: No hay jugadores. Agrega al menos uno antes de jugar.");
+                    volverAlMenu = true;
+                    continue;
+                }
+
+                if (juego.getTurnoActual() == null) {
+                    if (!juego.iniciarNuevoTurno()) {
+                        vista.mostrarMensaje("\u001B[33mNo se pudo iniciar el turno.\u001B[0m");
+                        volverAlMenu = true;
+                        continue;
+                    }
                 }
                 Jugador actual = juego.getJugadorActual();
                 boolean turnoTerminado = false;
@@ -59,10 +68,6 @@ public class ControladorConsolaEnJuego implements Observador
                             {
                                 vista.mostrarMensaje("\u001B[31mBUST\u001B[0m: no obtuvo combinaciones. Turno perdido.");
                                 turnoTerminado = true;
-                            } else
-                            {
-                                Turno t = juego.getTurnoActual();
-                                vista.mostrarDadosFormateados(t.getUltimoLanzamiento(), t.getUltimoLanzamientoCount());
                             }
                         }
                         case 2 ->
@@ -98,10 +103,7 @@ public class ControladorConsolaEnJuego implements Observador
                             }
                             vista.mostrarMensaje("Selección aplicada. Puntos ganados en esta selección: \u001B[32m" + puntos + "\u001B[0m");
                             Turno t = juego.getTurnoActual();
-                            if (t != null && t.getUltimoLanzamientoCount() > 0)
-                            {
-                                vista.mostrarDadosFormateados(t.getUltimoLanzamiento(), t.getUltimoLanzamientoCount());
-                            }
+
                         }
                         case 3 -> {
                             if (juego.getTurnoActual() == null)
@@ -122,7 +124,7 @@ public class ControladorConsolaEnJuego implements Observador
                         }
                         case 4 ->
                         {
-                            vista.mostrarEstadoJuego(juego);
+                            actualizar();
                         }
                         case 5 ->
                         {
@@ -139,7 +141,36 @@ public class ControladorConsolaEnJuego implements Observador
         }
     }
 
+
     @Override
     public void actualizar() {
+
+        // 1. Preparar listas de jugadores y puntos
+        java.util.List<String> nombres = new java.util.ArrayList<>();
+        java.util.List<Integer> puntos = new java.util.ArrayList<>();
+
+        for (Jugador j : juego.getJugadores()) {
+            nombres.add(j.getNombre());
+            puntos.add(j.getPuntosTotales());
+        }
+
+        // 2. Obtener datos del turno actual (si existe)
+        Turno turno = juego.getTurnoActual();
+        boolean hayTurno = turno != null;
+        String jugadorActual = juego.getJugadorActual() != null
+                ? juego.getJugadorActual().getNombre()
+                : "N/A";
+        int puntosTurno = hayTurno ? turno.getPuntosAcumuladosTurno() : 0;
+        int dadosRest = hayTurno ? turno.getDadosRestantes() : 0;
+        int[] ultLanz = hayTurno ? turno.getUltimoLanzamiento().clone() : new int[0];
+        int ultCount = hayTurno ? turno.getUltimoLanzamientoCount() : 0;
+
+        // 3. Llamar al metodo nuevo de la vista
+        vista.mostrarEstadoJuegoActualizado(nombres, puntos, jugadorActual, puntosTurno, dadosRest, ultLanz, ultCount, hayTurno);
+
+        // 4. Mostrar los dados formateados si corresponde
+        if (hayTurno && ultCount > 0) {
+            vista.mostrarDadosFormateados(ultLanz, ultCount);
+        }
     }
 }

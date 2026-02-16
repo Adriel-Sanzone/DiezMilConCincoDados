@@ -76,8 +76,10 @@ public class Juego implements Observable, Serializable {
         return new ArrayList<>(jugadores);
     }
 
-    public Jugador getJugadorActual()
-    {
+    public Jugador getJugadorActual() {
+        if (jugadores.isEmpty()) {
+            return null;
+        }
         return jugadores.get(indiceJugadorActual);
     }
 
@@ -86,19 +88,25 @@ public class Juego implements Observable, Serializable {
         return turnoActual;
     }
 
-    public boolean iniciarNuevoTurno()
-    {
+    public boolean iniciarNuevoTurno() {
         if (finalizado) return false;
+        if (jugadores.isEmpty()) {
 
+            return false;
+        }
         Jugador j = getJugadorActual();
+        if (j == null) {
+            return false;
+        }
         turnoActual = new Turno(j);
-        notificarObservadores();
+
         return true;
     }
 
     public int lanzarTurnoActual()
     {
         boolean hay = turnoActual.lanzar(cubo);
+
         notificarObservadores();
         if (!hay)
         {
@@ -112,7 +120,10 @@ public class Juego implements Observable, Serializable {
     public int aplicarSeleccionEnTurno(List<Integer> indicesSeleccionados)
     {
         int puntos = turnoActual.aplicarSeleccion(indicesSeleccionados);
-        if (puntos >= 0) notificarObservadores();
+        if (puntos >= 0) {
+
+            notificarObservadores();
+        }
         return puntos;
     }
 
@@ -129,6 +140,7 @@ public class Juego implements Observable, Serializable {
         {
             avanzarTurnoSinSumar();
         }
+
         notificarObservadores();
         return ganados;
     }
@@ -144,7 +156,7 @@ public class Juego implements Observable, Serializable {
         }
         indiceJugadorActual = (indiceJugadorActual + 1) % jugadores.size();
         turnoActual = null;
-        notificarObservadores();
+
     }
 
     public boolean isFinalizado()

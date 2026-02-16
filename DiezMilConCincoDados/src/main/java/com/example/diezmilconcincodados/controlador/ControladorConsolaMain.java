@@ -7,6 +7,8 @@ import com.example.diezmilconcincodados.vista.VistaJuegoConsola;
 import com.example.diezmilconcincodados.vista.VistaMenuConsola;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ControladorConsolaMain implements Observador
 {
@@ -19,7 +21,12 @@ public class ControladorConsolaMain implements Observador
         this.juego = juego;
         this.vistaMenu = vistaMenu;
         this.vistaJuego = vistaJuego;
-        if (this.juego != null) this.juego.agregarObservador(() -> {});
+
+        if (this.juego != null) {
+            this.juego.agregarObservador(this);
+        }
+
+        actualizar();
     }
 
     public void ejecutarLoopPrincipal()
@@ -32,12 +39,21 @@ public class ControladorConsolaMain implements Observador
             {
                 case 1 ->
                 {
-                    ControladorConsolaEnJuego enJuego = new ControladorConsolaEnJuego(juego, vistaJuego);
-                    enJuego.ejecutarLoopPartida();
+                    if (juego.getJugadores().isEmpty())
+                    {
+                        vistaMenu.mostrarMensaje("\u001B[33mNo hay jugadores. Agrega al menos uno antes de jugar.\u001B[0m");
+                    } else
+                    {
+                        juego.quitarObservador(this);
+                        ControladorConsolaEnJuego enJuego = new ControladorConsolaEnJuego(juego, vistaJuego);
+                        enJuego.ejecutarLoopPartida();
+                        juego.agregarObservador(this);
+                        actualizar();
+                    }
                 }
                 case 2 -> agregarJugador();
                 case 3 -> eliminarJugador();
-                case 4 -> vistaMenu.mostrarEstadoJuego(juego);
+                case 4 -> mostrarEstadoPartida();
                 case 5 -> guardarPartida();
                 case 6 -> cargarPartida();
                 case 7 -> vistaMenu.mostrarInstrucciones();
@@ -102,31 +118,57 @@ public class ControladorConsolaMain implements Observador
     private void cargarPartida()
     {
         String nombre = vistaMenu.solicitarNombreArchivoCargar();
-
         if (nombre == null || nombre.isEmpty())
         {
             nombre = "partida.b";
         }
-
         Juego cargado = Juego.cargarPartida(new File(nombre));
-
         if (cargado == null)
         {
             vistaMenu.mostrarMensaje("\u001B[31mERROR DE CARGADO DE PARTIDA\u001B[0m (archivo inexistente o corrupto).");
             return;
         }
-
         if (this.juego != null)
         {
-            this.juego.quitarObservador(() -> {});
+            this.juego.quitarObservador(this);
         }
         this.juego = cargado;
-        this.juego.agregarObservador(() -> {});
+        this.juego.agregarObservador(this);
         vistaMenu.mostrarMensaje("Partida cargada de \u001B[33m" + nombre + "\u001B[0m");
+        actualizar();
+    }
+
+    private void mostrarEstadoPartida() {
+
+        List<String> nombres = new ArrayList<>();
+        List<Integer> puntos = new ArrayList<>();
+
+        for (Jugador j : juego.getJugadores()) {
+            nombres.add(j.getNombre());
+            puntos.add(j.getPuntosTotales());
+        }
+
+        String jugadorActual = juego.getJugadorActual() != null
+                ? juego.getJugadorActual().getNombre()
+                : "N/A";
+
+
+        vistaMenu.mostrarEstadoJuegoActualizado(
+                nombres,
+                puntos,
+                jugadorActual,
+                0,
+                0,
+                new int[0],
+                0,
+                false
+        );
     }
 
     @Override
-    public void actualizar() {
+    public void actualizar()
+    {
+        mostrarEstadoPartida();
     }
 }
 

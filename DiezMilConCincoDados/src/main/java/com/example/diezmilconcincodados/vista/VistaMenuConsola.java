@@ -3,6 +3,7 @@ package com.example.diezmilconcincodados.vista;
 import com.example.diezmilconcincodados.model.Juego;
 import com.example.diezmilconcincodados.vista.VistaEstadoJuego;
 
+import java.util.List;
 import java.util.Scanner;
 
 public class VistaMenuConsola {
@@ -49,8 +50,26 @@ public class VistaMenuConsola {
         return n;
     }
 
-    public void mostrarEstadoJuego(Juego juego) {
-        estadoView.mostrarEstadoJuego(juego);
+    public void mostrarEstadoJuegoActualizado(
+            List<String> nombresJugadores,
+            List<Integer> puntosJugadores,
+            String nombreJugadorActual,
+            int puntosAcumuladosTurno,
+            int dadosRestantes,
+            int[] ultimoLanzamiento,
+            int ultimoLanzamientoCount,
+            boolean hayTurnoActivo
+    ) {
+        estadoView.mostrarEstadoJuego(
+                nombresJugadores,
+                puntosJugadores,
+                nombreJugadorActual,
+                puntosAcumuladosTurno,
+                dadosRestantes,
+                ultimoLanzamiento,
+                ultimoLanzamientoCount,
+                hayTurnoActivo
+        );
     }
 
     public void mostrarMensaje(String mensaje) {
