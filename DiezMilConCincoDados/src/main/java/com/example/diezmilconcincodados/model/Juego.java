@@ -83,6 +83,19 @@ public class Juego implements Observable, Serializable {
         return jugadores.get(indiceJugadorActual);
     }
 
+    public Jugador getGanador()
+    {
+        if (!finalizado) return null;
+        for (Jugador j : jugadores)
+        {
+            if (j.getPuntosTotales() >= 10000)
+            {
+                return j;
+            }
+        }
+        return null;
+    }
+
     public Turno getTurnoActual()
     {
         return turnoActual;
@@ -187,6 +200,17 @@ public class Juego implements Observable, Serializable {
         {
             return null;
         }
+    }
+
+    public void resetearPartida() {
+        for (Jugador j : jugadores)
+        {
+            j.resetearPuntos();
+        }
+        turnoActual = null;
+        indiceJugadorActual = 0;
+        finalizado = false;
+        notificarObservadores();
     }
 
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException

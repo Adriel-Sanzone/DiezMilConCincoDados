@@ -39,7 +39,11 @@ public class ControladorConsolaMain implements Observador
             {
                 case 1 ->
                 {
-                    if (juego.getJugadores().isEmpty())
+                    if (juego.isFinalizado())
+                    {
+                        vistaMenu.mostrarMensaje("\u001B[33mLa partida anterior ya terminó. Se reiniciará automáticamente.\u001B[0m");
+                        juego.resetearPartida();
+                    } else if (juego.getJugadores().isEmpty())
                     {
                         vistaMenu.mostrarMensaje("\u001B[33mNo hay jugadores. Agrega al menos uno antes de jugar.\u001B[0m");
                     } else

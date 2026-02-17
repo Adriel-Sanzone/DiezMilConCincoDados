@@ -121,6 +121,25 @@ public class ControladorConsolaEnJuego implements Observador
                                 }
                                 turnoTerminado = true;
                             }
+
+                            if (juego.isFinalizado())
+                            {
+                                Jugador ganador = juego.getGanador();
+                                if (ganador != null)
+                                {
+                                    vista.mostrarMensaje("\n--------------------------------");
+                                    vista.mostrarMensaje("\n\u001B[42m \u001B[1m\u001B[30m ¡GANADOR!   \u001B[0m");
+                                    vista.mostrarMensaje("\n¡Felicitaciones, \u001B[34m" + ganador.getNombre() + "\u001B[0m!");
+                                    vista.mostrarMensaje("Llegaste a " + ganador.getPuntosTotales() + " puntos.");
+                                    vista.mostrarMensaje("\n--------------------------------");
+                                    vista.mostrarMensaje("\n\nLa partida ha terminado. Volviendo al menú principal...\n");
+
+                                    vista.mostrarMensaje("\n\u001B[33mPartida reseteada. ¡Podés jugar de nuevo!\u001B[0m");
+                                    juego.resetearPartida();
+
+                                }
+                                volverAlMenu = true;  // salimos del loop del juego
+                            }
                         }
                         case 4 ->
                         {

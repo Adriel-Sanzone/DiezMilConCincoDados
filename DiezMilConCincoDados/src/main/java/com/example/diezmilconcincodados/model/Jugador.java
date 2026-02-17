@@ -37,6 +37,11 @@ public class Jugador implements Serializable
         this.puntosTotales += puntos;
     }
 
+    public void resetearPuntos()
+    {
+        this.puntosTotales = 0;
+    }
+
     @Override
     public String toString()
     {
