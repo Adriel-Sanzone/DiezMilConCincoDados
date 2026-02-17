@@ -6,9 +6,10 @@ import com.example.diezmilconcincodados.vista.VistaJuegoConsola;
 import com.example.diezmilconcincodados.vista.VistaMenuConsola;
 
 import java.io.File;
+import java.rmi.RemoteException;
 
 public class AppConsola {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws RemoteException {
 
         File saveFile = new File("partida.b");
         Juego juego;
