@@ -16,18 +16,31 @@ public class Juego extends ObservableRemoto implements IJuego, Serializable {
     private final CuboDados cubo = new CuboDados();
     private boolean finalizado = false;
 
-    public Juego() {
-        // No necesitamos inicializar observadores manualmente
-        // La librería lo hace por nosotros
-    }
+    public boolean agregarJugador(Jugador j) throws RemoteException {
+        if (j == null || j.getNombre() == null) return false;
 
-    public void agregarJugador(Jugador j) throws RemoteException {
+        String nuevo = j.getNombre().trim();
+        if (nuevo.isEmpty()) return false;
+
+        for (Jugador existing : jugadores) {
+            if (existing.getNombre().equalsIgnoreCase(nuevo)) {
+                return false;
+            }
+        }
+
         jugadores.add(j);
-        notificarObservadores(null);  // ← cambio obligatorio de la librería
+
+        if (turnoActual == null && !jugadores.isEmpty()) {
+            iniciarNuevoTurnoInterno();
+        }
+
+        notificarObservadores(null);
+        return true;
     }
 
     public boolean eliminarJugador(String nombre) throws RemoteException {
         if (nombre == null || nombre.isEmpty()) return false;
+
         int idxElim = -1;
         for (int i = 0; i < jugadores.size(); i++) {
             if (jugadores.get(i).getNombre().equalsIgnoreCase(nombre)) {
@@ -35,6 +48,7 @@ public class Juego extends ObservableRemoto implements IJuego, Serializable {
                 break;
             }
         }
+
         if (idxElim == -1) return false;
 
         Jugador eliminado = jugadores.get(idxElim);
@@ -46,14 +60,14 @@ public class Juego extends ObservableRemoto implements IJuego, Serializable {
         } else {
             if (turnoActual != null && turnoActual.getJugador().equals(eliminado)) {
                 turnoActual = null;
-            }
-            if (idxElim < indiceJugadorActual) {
-                indiceJugadorActual = Math.max(0, indiceJugadorActual - 1);
-            } else if (idxElim == indiceJugadorActual) {
                 indiceJugadorActual = indiceJugadorActual % jugadores.size();
+                iniciarNuevoTurnoInterno();
+            } else if (idxElim < indiceJugadorActual) {
+                indiceJugadorActual--;
             }
         }
-        notificarObservadores(null);  // ← cambio obligatorio
+
+        notificarObservadores(null);
         return true;
     }
 
@@ -62,10 +76,12 @@ public class Juego extends ObservableRemoto implements IJuego, Serializable {
     }
 
     public Jugador getJugadorActual() throws RemoteException {
-        if (jugadores.isEmpty()) {
-            return null;
-        }
+        if (jugadores.isEmpty()) return null;
         return jugadores.get(indiceJugadorActual);
+    }
+
+    public Turno getTurnoActual() throws RemoteException {
+        return turnoActual;
     }
 
     public Jugador getGanador() throws RemoteException {
@@ -78,69 +94,83 @@ public class Juego extends ObservableRemoto implements IJuego, Serializable {
         return null;
     }
 
-    public Turno getTurnoActual() throws RemoteException {
-        return turnoActual;
+    public boolean iniciarNuevoTurno() throws RemoteException {
+        boolean ok = iniciarNuevoTurnoInterno();
+        if (ok) notificarObservadores(null);
+        return ok;
     }
 
-    public boolean iniciarNuevoTurno() throws RemoteException {
-        if (finalizado) return false;
-        if (jugadores.isEmpty()) {
-            return false;
-        }
-        Jugador j = getJugadorActual();
-        if (j == null) {
-            return false;
-        }
-        turnoActual = new Turno(j);
-        notificarObservadores(null);  // ← agregamos notificación aquí (antes no la tenía)
+    private boolean iniciarNuevoTurnoInterno() {
+        if (finalizado || jugadores.isEmpty()) return false;
+        turnoActual = new Turno(jugadores.get(indiceJugadorActual));
         return true;
     }
 
     public int lanzarTurnoActual() throws RemoteException {
+        if (turnoActual == null) return -1;
+
         boolean hay = turnoActual.lanzar(cubo);
-        notificarObservadores(null);  // ← cambio obligatorio
+
         if (!hay) {
-            int perdidos = turnoActual.plantarse();
-            avanzarTurnoSinSumar();
-            return -1;
+            turnoActual.plantarse();
+            avanzarTurnoInterno();
         }
-        return 1;
+
+        notificarObservadores(null);
+        return hay ? 1 : -1;
     }
 
     public int aplicarSeleccionEnTurno(List<Integer> indicesSeleccionados) throws RemoteException {
+        if (turnoActual == null) return -1;
+
         int puntos = turnoActual.aplicarSeleccion(indicesSeleccionados);
         if (puntos >= 0) {
-            notificarObservadores(null);  // ← cambio obligatorio
+            notificarObservadores(null);
         }
         return puntos;
     }
 
     public int plantarseEnTurno() throws RemoteException {
+        if (turnoActual == null) return -1;
+
         int ganados = turnoActual.plantarse();
         Jugador j = turnoActual.getJugador();
         j.sumarPuntos(ganados);
+
         if (j.getPuntosTotales() >= 10000) {
             finalizado = true;
+            turnoActual = null;
         } else {
-            avanzarTurnoSinSumar();
+            avanzarTurnoInterno();
         }
-        notificarObservadores(null);  // ← cambio obligatorio
+
+        notificarObservadores(null);
         return ganados;
     }
 
-    private void avanzarTurnoSinSumar() throws RemoteException {
+    private void avanzarTurnoInterno() {
         if (jugadores.isEmpty()) {
             turnoActual = null;
             indiceJugadorActual = 0;
             return;
         }
+
         indiceJugadorActual = (indiceJugadorActual + 1) % jugadores.size();
-        turnoActual = null;
-        // NO llamamos notificar aquí → ya se llama en plantarseEnTurno() o lanzar
+        iniciarNuevoTurnoInterno();
     }
 
     public boolean isFinalizado() throws RemoteException {
         return finalizado;
+    }
+
+    public void resetearPartida() throws RemoteException {
+        for (Jugador j : jugadores) {
+            j.resetearPuntos();
+        }
+        turnoActual = null;
+        indiceJugadorActual = 0;
+        finalizado = false;
+        notificarObservadores(null);
     }
 
     public void guardarPartida(File f) {
@@ -160,18 +190,7 @@ public class Juego extends ObservableRemoto implements IJuego, Serializable {
         }
     }
 
-    public void resetearPartida() throws RemoteException {
-        for (Jugador j : jugadores) {
-            j.resetearPuntos();  // asumiendo que Jugador tiene este método
-        }
-        turnoActual = null;
-        indiceJugadorActual = 0;
-        finalizado = false;
-        notificarObservadores(null);
-    }
-
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        // No necesitamos reinicializar observadores → la librería lo maneja
     }
 }

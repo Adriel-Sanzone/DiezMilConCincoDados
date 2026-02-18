@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface IJuego extends IObservableRemoto {
 
-    void agregarJugador(Jugador j) throws RemoteException;
+    boolean agregarJugador(Jugador j) throws RemoteException;
     boolean eliminarJugador(String nombre) throws RemoteException;
     List<Jugador> getJugadores() throws RemoteException;
     Jugador getJugadorActual() throws RemoteException;

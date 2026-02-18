@@ -1,7 +1,6 @@
 package com.example.diezmilconcincodados.controlador;
 
 import com.example.diezmilconcincodados.model.IJuego;
-import com.example.diezmilconcincodados.model.Juego;
 import com.example.diezmilconcincodados.model.Jugador;
 import com.example.diezmilconcincodados.model.Turno;
 import com.example.diezmilconcincodados.vista.VistaJuegoConsola;
@@ -11,68 +10,94 @@ import ar.edu.unlu.poo.rmimvc.observer.IObservableRemoto;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ControladorConsolaEnJuego implements IControladorRemoto {
 
     private IJuego juego;
     private final VistaJuegoConsola vista;
+    private String nombreLocal;
+
+    private final AtomicBoolean enInteraccion = new AtomicBoolean(false);
+
+    private String lastJugadorActualSeen = null;
 
     public ControladorConsolaEnJuego(IJuego juego, VistaJuegoConsola vista) {
         this.juego = juego;
         this.vista = vista;
     }
 
-    public void ejecutarLoopPartida() throws RemoteException {
-        // NO llamamos juego.agregarObservador(this) manualmente
-        // La librería lo agrega automáticamente al conectar el cliente
-        actualizar(null, null);
+    public void setNombreLocal(String nombreLocal) {
+        this.nombreLocal = nombreLocal;
+    }
 
+    public boolean registrarJugadorLocal(String nombre) {
+        if (nombre == null || nombre.trim().isEmpty()) return false;
         try {
-            boolean volverAlMenu = false;
-            while (!volverAlMenu && !juego.isFinalizado()) {
-                if (juego.getJugadores().isEmpty()) {
-                    vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: No hay jugadores. Agrega al menos uno antes de jugar.");
-                    volverAlMenu = true;
+            boolean ok = juego.agregarJugador(new com.example.diezmilconcincodados.model.Jugador(nombre.trim()));
+            return ok;
+        } catch (RemoteException e) {
+            vista.mostrarMensaje("\u001B[31mError de red al registrar jugador: " + e.getMessage() + "\u001B[0m");
+            return false;
+        }
+    }
+
+    public void ejecutarLoopPartida() throws RemoteException {
+        actualizar(null, null);
+        try {
+            while (!juego.isFinalizado()) {
+                if (juego.getJugadores().isEmpty() || juego.getTurnoActual() == null) {
+                    lastJugadorActualSeen = null;
+                    vista.mostrarMensaje("\u001B[33mEsperando jugadores...\u001B[0m");
+                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
                     continue;
                 }
 
-                if (juego.getTurnoActual() == null) {
-                    if (!juego.iniciarNuevoTurno()) {
-                        vista.mostrarMensaje("\u001B[33mNo se pudo iniciar el turno.\u001B[0m");
-                        volverAlMenu = true;
-                        continue;
-                    }
+                Jugador actual = juego.getJugadorActual();
+                if (actual == null) {
+                    try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+                    continue;
                 }
 
-                Jugador actual = juego.getJugadorActual();
-                boolean turnoTerminado = false;
+                if (nombreLocal == null || !actual.getNombre().equalsIgnoreCase(nombreLocal)) {
+                    String nombreActual = actual.getNombre();
+                    if (lastJugadorActualSeen == null || !lastJugadorActualSeen.equals(nombreActual)) {
+                        vista.mostrarMensaje("\u001B[36mNo es tu turno. Esperando a " + nombreActual + "...\u001B[0m");
+                        lastJugadorActualSeen = nombreActual;
+                    }
+                    try { Thread.sleep(700); } catch (InterruptedException ignored) {}
+                    continue;
+                }
 
-                while (!turnoTerminado && !volverAlMenu && !juego.isFinalizado()) {
+                boolean turnoTerminado = false;
+                while (!turnoTerminado && !juego.isFinalizado()) {
+                    Turno turno = juego.getTurnoActual();
+                    if (turno == null) break;
+
+                    enInteraccion.set(true);
                     int opcion = vista.mostrarMenuJugador(actual.getNombre());
+                    enInteraccion.set(false);
+
                     switch (opcion) {
                         case 1 -> {
-                            Turno turno = juego.getTurnoActual();
-                            if (turno == null) {
-                                vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: No hay turno inicializado.");
-                                continue;
-                            }
                             if (turno.yaLanze()) {
                                 vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Ya lanzaste en este turno. Primero seleccioná o plantate.");
                                 continue;
                             }
                             try {
                                 int res = juego.lanzarTurnoActual();
-                                actualizar(null, null); // notifica automáticamente
                                 if (res < 0) {
                                     vista.mostrarMensaje("\u001B[31mBUST\u001B[0m: no obtuvo combinaciones. Turno perdido.");
                                     turnoTerminado = true;
+                                } else {
+                                    lastJugadorActualSeen = null;
                                 }
                             } catch (RemoteException e) {
                                 vista.mostrarMensaje("\u001B[31mError de red al lanzar dados: " + e.getMessage() + "\u001B[0m");
+                                turnoTerminado = true;
                             }
                         }
                         case 2 -> {
-                            Turno turno = juego.getTurnoActual();
                             if (turno == null || !turno.yaLanze()) {
                                 vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Debe lanzar los dados antes de seleccionar.");
                                 continue;
@@ -95,64 +120,54 @@ public class ControladorConsolaEnJuego implements IControladorRemoto {
                             try {
                                 int puntos = juego.aplicarSeleccionEnTurno(seleccion);
                                 if (puntos < 0) {
-                                    vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Selección inválida. Verifique que eligió combinaciones puntuables.");
+                                    vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Selección inválida.");
                                     continue;
                                 }
                                 vista.mostrarMensaje("Selección aplicada. Puntos ganados en esta selección: \u001B[32m" + puntos + "\u001B[0m");
                             } catch (RemoteException e) {
                                 vista.mostrarMensaje("\u001B[31mError de red al aplicar selección: " + e.getMessage() + "\u001B[0m");
+                                turnoTerminado = true;
                             }
                         }
                         case 3 -> {
-                            if (juego.getTurnoActual() == null) {
+                            if (turno == null) {
                                 vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: No hay turno activo para plantarse.");
                             } else {
                                 try {
                                     int ganados = juego.plantarseEnTurno();
-                                    if (ganados >= 0) {
-                                        vista.mostrarMensaje("Se plantó y se guardaron los puntos (+\u001B[32m" + ganados + "\u001B[0m). Avanza el turno.");
-                                    } else {
-                                        vista.mostrarMensaje("Se plantó. Avanza el turno.");
-                                    }
+                                    vista.mostrarMensaje("Se plantó y se guardaron los puntos (+\u001B[32m" + ganados + "\u001B[0m). Avanza el turno.");
                                     turnoTerminado = true;
+                                    lastJugadorActualSeen = null;
                                 } catch (RemoteException e) {
                                     vista.mostrarMensaje("\u001B[31mError de red al plantarse: " + e.getMessage() + "\u001B[0m");
+                                    turnoTerminado = true;
                                 }
-                            }
-                            if (juego.isFinalizado()) {
-                                try {
-                                    Jugador ganador = juego.getGanador();
-                                    if (ganador != null) {
-                                        vista.mostrarMensaje("\n--------------------------------");
-                                        vista.mostrarMensaje("\n\u001B[42m \u001B[1m\u001B[30m ¡GANADOR! \u001B[0m");
-                                        vista.mostrarMensaje("\n¡Felicitaciones, \u001B[34m" + ganador.getNombre() + "\u001B[0m!");
-                                        vista.mostrarMensaje("Llegaste a " + ganador.getPuntosTotales() + " puntos.");
-                                        vista.mostrarMensaje("\n--------------------------------");
-                                        vista.mostrarMensaje("\n\nLa partida ha terminado. Volviendo al menú principal...\n");
-                                        vista.mostrarMensaje("\n\u001B[33mPartida reseteada. ¡Podés jugar de nuevo!\u001B[0m");
-                                        juego.resetearPartida();
-                                    }
-                                } catch (RemoteException e) {
-                                    vista.mostrarMensaje("\u001B[31mError de red al verificar ganador: " + e.getMessage() + "\u001B[0m");
-                                }
-                                volverAlMenu = true;
                             }
                         }
                         case 4 -> {
-                            actualizar(null, null);  // refresca manualmente
+                            actualizar(null, null);
                         }
                         case 5 -> {
-                            volverAlMenu = true;
-                            vista.mostrarMensaje("Volviendo al menú principal. \u001B[33mPartida pausada.\u001B[0m");
+                            vista.mostrarInstrucciones();
                         }
                         default -> vista.mostrarMensaje("\u001B[31mERROR\u001B[0m: Opción no válida.");
                     }
                 }
             }
-        } finally {
-            // NO llamar juego.quitarObservador(this)
-            // La librería maneja la desconexión
-        }
+
+            try {
+                Jugador ganador = juego.getGanador();
+                if (ganador != null) {
+                    vista.mostrarMensaje("\n\u001B[42m \u001B[1m\u001B[30m ¡GANADOR! \u001B[0m");
+                    vista.mostrarMensaje("¡Felicitaciones, " + ganador.getNombre() + "!");
+                } else {
+                    vista.mostrarMensaje("\u001B[33mLa partida terminó.\u001B[0m");
+                }
+            } catch (RemoteException e) {
+                vista.mostrarMensaje("\u001B[31mError de red al verificar ganador: " + e.getMessage() + "\u001B[0m");
+            }
+
+        } finally {}
     }
 
     @Override
@@ -160,6 +175,20 @@ public class ControladorConsolaEnJuego implements IControladorRemoto {
 
         List<String> nombres = new ArrayList<>();
         List<Integer> puntos = new ArrayList<>();
+
+        if (juego.isFinalizado())
+        {
+            Jugador ganador = juego.getGanador();
+            if (ganador != null) {
+                vista.mostrarMensaje("\n================================");
+                vista.mostrarMensaje("  \u001B[44m  \u001B[GANADOR  \u001B[0m              ");
+                vista.mostrarMensaje("================================");
+                vista.mostrarMensaje("GANADOR: \u001B[34m" + ganador.getNombre() + "\u001B[0m");
+                vista.mostrarMensaje("================================\n");
+            }
+            return;
+        }
+
         try {
             for (Jugador j : juego.getJugadores()) {
                 nombres.add(j.getNombre());
@@ -178,18 +207,32 @@ public class ControladorConsolaEnJuego implements IControladorRemoto {
             int[] ultLanz = hayTurno ? turno.getUltimoLanzamiento().clone() : new int[0];
             int ultCount = hayTurno ? turno.getUltimoLanzamientoCount() : 0;
 
-            if (ultCount > 0) {
-                for (int d : ultLanz) {
-                    System.out.print(d + " ");
+            if (enInteraccion.get()) {
+                vista.mostrarEstadoJuegoActualizado(nombres, puntos, jugadorActual, puntosTurno, dadosRest, ultLanz, ultCount, hayTurno);
+                if (hayTurno && ultCount > 0) {
+                    vista.mostrarDadosFormateados(ultLanz, ultCount);
                 }
-                System.out.println();
-            }
 
-            vista.mostrarEstadoJuegoActualizado(nombres, puntos, jugadorActual, puntosTurno, dadosRest, ultLanz, ultCount, hayTurno);
+                if (nombreLocal != null && jugadorActual.equalsIgnoreCase(nombreLocal)) {
+                    vista.reimprimirMenuJugador(nombreLocal);
+                }
 
-            if (hayTurno && ultCount > 0) {
-                vista.mostrarDadosFormateados(ultLanz, ultCount);
+                if (nombreLocal == null || !jugadorActual.equalsIgnoreCase(nombreLocal)) {
+                    lastJugadorActualSeen = jugadorActual;
+                } else {
+                    lastJugadorActualSeen = null;
+                }
             } else {
+
+                vista.mostrarEstadoJuegoActualizado(nombres, puntos, jugadorActual, puntosTurno, dadosRest, ultLanz, ultCount, hayTurno);
+                if (hayTurno && ultCount > 0) {
+                    vista.mostrarDadosFormateados(ultLanz, ultCount);
+                }
+                if (nombreLocal == null || !jugadorActual.equalsIgnoreCase(nombreLocal)) {
+                    lastJugadorActualSeen = jugadorActual;
+                } else {
+                    lastJugadorActualSeen = null;
+                }
             }
         } catch (RemoteException e) {
             vista.mostrarMensaje("\u001B[31mError de red al actualizar vista: " + e.getMessage() + "\u001B[0m");

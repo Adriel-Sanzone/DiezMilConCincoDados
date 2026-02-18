@@ -38,11 +38,9 @@ public class ControladorConsolaMain implements IControladorRemoto {
                     } else if (juego.getJugadores().isEmpty()) {
                         vistaMenu.mostrarMensaje("\u001B[33mNo hay jugadores. Agrega al menos uno antes de jugar.\u001B[0m");
                     } else {
-                        // ¡IMPORTANTE! Ya NO llamamos agregar/quitarObservador manualmente
-                        // La librería lo hace automáticamente al conectar el cliente
                         ControladorConsolaEnJuego enJuego = new ControladorConsolaEnJuego(juego, vistaJuego);
                         enJuego.ejecutarLoopPartida();
-                        actualizar(null, null);  // refresca al volver del juego
+                        actualizar(null, null);
                     }
                 }
                 case 2 -> agregarJugador();
@@ -98,8 +96,8 @@ public class ControladorConsolaMain implements IControladorRemoto {
         if (nombre == null || nombre.isEmpty()) {
             nombre = "partida.b";
         }
-        // Usa la clase concreta directamente (no el remoto)
-        Juego partidaAGuardar = (Juego) juego;  // casteo seguro si es el mismo objeto
+
+        Juego partidaAGuardar = (Juego) juego;
         partidaAGuardar.guardarPartida(new File(nombre));
         vistaMenu.mostrarMensaje("Partida guardada en \u001B[33m" + nombre + "\u001B[0m");
     }
@@ -114,7 +112,7 @@ public class ControladorConsolaMain implements IControladorRemoto {
             vistaMenu.mostrarMensaje("\u001B[31mERROR DE CARGADO DE PARTIDA\u001B[0m (archivo inexistente o corrupto).");
             return;
         }
-        this.juego = cargado;  // ← asigna el nuevo Juego local
+        this.juego = cargado;
         vistaMenu.mostrarMensaje("Partida cargada de \u001B[33m" + nombre + "\u001B[0m");
         actualizar(null, null);
     }

@@ -83,7 +83,7 @@ public class Turno implements Serializable {
     {
         if (indicesSeleccionados == null || indicesSeleccionados.isEmpty())
         {
-            return -1; // selección vacía -> inválida
+            return -1;
         }
 
         List<Integer> indices = indicesSeleccionados.stream().distinct().sorted().toList();
@@ -93,11 +93,10 @@ public class Turno implements Serializable {
         {
             if (idx < 0 || idx >= cantidadValidos)
             {
-                return -1; // índice fuera de rango
+                return -1;
             }
         }
 
-        // Calcular puntos sin modificar el estado
         int[] snapshot = new int[ultimoLanzamiento.length];
         System.arraycopy(ultimoLanzamiento, 0, snapshot, 0, ultimoLanzamiento.length);
         int puntos = EvaluadorPuntuacion.calcularPuntosPorSeleccion(snapshot, indices);
