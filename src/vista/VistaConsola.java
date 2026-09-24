@@ -1,6 +1,7 @@
 package vista;
 
 import controlador.Controlador;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
@@ -21,10 +22,8 @@ public class VistaConsola implements Observador {
 
     private enum ModoEntrada {
         ESPERANDO_OPCION,
-        ESPERANDO_NOMBRE_JUGADOR,
         ESPERANDO_SELECCION_VALORES,
-        ESPERANDO_NOMBRE_PARTIDA_GUARDAR,
-        ESPERANDO_INDICE_PARTIDA_CARGAR
+        ESPERANDO_NOMBRE_PARTIDA_GUARDAR
     }
 
     private final Controlador controlador;
@@ -32,7 +31,6 @@ public class VistaConsola implements Observador {
     private final TextField campoEntrada;
     private final BorderPane root;
     private ModoEntrada modo;
-    private List<String> ultimaListaPartidas;
 
     public VistaConsola(Controlador controlador) {
         if (controlador == null) {
@@ -40,7 +38,6 @@ public class VistaConsola implements Observador {
         }
         this.controlador = controlador;
         this.modo = ModoEntrada.ESPERANDO_OPCION;
-        this.ultimaListaPartidas = new ArrayList<>();
 
         this.textArea = construirTextArea();
         this.campoEntrada = construirCampoEntrada();
@@ -50,6 +47,7 @@ public class VistaConsola implements Observador {
         this.root.setBottom(construirBarraEntrada());
 
         imprimir("=== Consola Diez Mil con cinco dados ===");
+        imprimir("Estas jugando como: " + controlador.getMiJugador());
         imprimir("Ingresa el número de la opcion.");
         imprimirMenu();
     }
@@ -85,34 +83,30 @@ public class VistaConsola implements Observador {
 
     @Override
     public void actualizar(Evento evento) {
-        switch (evento) {
-            case JUGADOR_AGREGADO -> manejarJugadorAgregado();
-            case PARTIDA_INICIADA -> manejarPartidaIniciada();
-            case DADOS_TIRADOS -> manejarDadosTirados();
-            case DADOS_SELECCIONADOS -> manejarDadosSeleccionados();
-            case TURNO_PERDIDO -> manejarTurnoPerdido();
-            case JUGADOR_PLANTADO -> manejarJugadorPlantado();
-            case CAMBIO_TURNO -> manejarCambioTurno();
-            case PARTIDA_FINALIZADA -> manejarPartidaFinalizada();
-            case PARTIDA_CARGADA -> manejarPartidaCargada();
-        }
-        resetearModoSiCorresponde();
-        if (modo == ModoEntrada.ESPERANDO_OPCION) {
-            imprimirMenu();
-        }
+        Platform.runLater(() -> {
+            switch (evento) {
+                case JUGADOR_AGREGADO -> manejarJugadorAgregado();
+                case PARTIDA_INICIADA -> manejarPartidaIniciada();
+                case DADOS_TIRADOS -> manejarDadosTirados();
+                case DADOS_SELECCIONADOS -> manejarDadosSeleccionados();
+                case TURNO_PERDIDO -> manejarTurnoPerdido();
+                case JUGADOR_PLANTADO -> manejarJugadorPlantado();
+                case CAMBIO_TURNO -> manejarCambioTurno();
+                case PARTIDA_FINALIZADA -> manejarPartidaFinalizada();
+            }
+            resetearModoSiCorresponde();
+            if (modo == ModoEntrada.ESPERANDO_OPCION) {
+                imprimirMenu();
+            }
+        });
     }
 
     private void resetearModoSiCorresponde() {
-        if (modo == ModoEntrada.ESPERANDO_NOMBRE_JUGADOR && !controlador.estaEnConfiguracion()) {
-            modo = ModoEntrada.ESPERANDO_OPCION;
-        }
-        if (modo == ModoEntrada.ESPERANDO_INDICE_PARTIDA_CARGAR && !controlador.estaEnConfiguracion()) {
-            modo = ModoEntrada.ESPERANDO_OPCION;
-        }
         if (modo == ModoEntrada.ESPERANDO_NOMBRE_PARTIDA_GUARDAR && !controlador.estaEnCurso()) {
             modo = ModoEntrada.ESPERANDO_OPCION;
         }
-        if (modo == ModoEntrada.ESPERANDO_SELECCION_VALORES && !controlador.esFasePostTirada()) {
+        if (modo == ModoEntrada.ESPERANDO_SELECCION_VALORES
+                && (!controlador.esFasePostTirada() || !controlador.esMiTurno())) {
             modo = ModoEntrada.ESPERANDO_OPCION;
         }
     }
@@ -130,10 +124,8 @@ public class VistaConsola implements Observador {
         imprimir("> " + entrada);
 
         switch (modo) {
-            case ESPERANDO_NOMBRE_JUGADOR -> procesarNombreJugadorIngresado(entrada);
             case ESPERANDO_SELECCION_VALORES -> procesarSeleccionIngresada(entrada);
             case ESPERANDO_NOMBRE_PARTIDA_GUARDAR -> procesarNombreParaGuardar(entrada);
-            case ESPERANDO_INDICE_PARTIDA_CARGAR -> procesarIndiceParaCargar(entrada);
             default -> procesarOpcionIngresada(entrada);
         }
     }
@@ -149,23 +141,22 @@ public class VistaConsola implements Observador {
     }
 
     private void procesarOpcionConfiguracion(String opcion) {
-        switch (opcion) {
-            case "1" -> {
-                imprimir("Ingresa el nombre del jugador:");
-                modo = ModoEntrada.ESPERANDO_NOMBRE_JUGADOR;
-            }
-            case "2" -> intentarIniciarPartida();
-            case "3" -> iniciarFlujoCargarPartida();
-            default -> {
-                imprimir("Opcion invalida. Las opciones son 1, 2 o 3.");
-                imprimirMenu();
-            }
+        if (opcion.equals("1")) {
+            intentarIniciarPartida();
+        } else {
+            imprimir("Opcion invalida. La unica opcion es 1.");
+            imprimirMenu();
         }
     }
 
     private void procesarOpcionEnCurso(String opcion) {
         if (opcion.equals("3")) {
             iniciarFlujoGuardarPartida();
+            return;
+        }
+        if (!controlador.esMiTurno()) {
+            imprimir("No es tu turno: esta jugando " + controlador.getNombreJugadorActual() + ".");
+            imprimirMenu();
             return;
         }
         if (controlador.esFaseInicial()) {
@@ -211,16 +202,6 @@ public class VistaConsola implements Observador {
         }
     }
 
-    private void procesarNombreJugadorIngresado(String nombre) {
-        try {
-            controlador.agregarJugador(nombre);
-        } catch (RuntimeException ex) {
-            imprimir("ERROR: " + ex.getMessage());
-        }
-        modo = ModoEntrada.ESPERANDO_OPCION;
-        imprimirMenu();
-    }
-
     private void procesarSeleccionIngresada(String entrada) {
         List<Integer> valores = parsearValores(entrada);
         if (valores == null) {
@@ -255,57 +236,12 @@ public class VistaConsola implements Observador {
     private void procesarNombreParaGuardar(String nombre) {
         try {
             controlador.guardarPartida(nombre);
-            imprimir("Partida guardada como \"" + nombre + "\".");
+            imprimir("Partida guardada como \"" + nombre + "\" en el servidor.");
         } catch (Exception ex) {
             imprimir("ERROR al guardar: " + ex.getMessage());
         }
         modo = ModoEntrada.ESPERANDO_OPCION;
         imprimirMenu();
-    }
-
-    private void iniciarFlujoCargarPartida() {
-        ultimaListaPartidas = new ArrayList<>(controlador.listarPartidasGuardadas());
-        if (ultimaListaPartidas.isEmpty()) {
-            imprimir("No hay partidas guardadas.");
-            imprimirMenu();
-            return;
-        }
-        imprimir("Partidas guardadas:");
-        for (int i = 0; i < ultimaListaPartidas.size(); i++) {
-            imprimir("  [" + (i + 1) + "] " + ultimaListaPartidas.get(i));
-        }
-        imprimir("Escribi el numero de la partida a cargar (0 para cancelar):");
-        modo = ModoEntrada.ESPERANDO_INDICE_PARTIDA_CARGAR;
-    }
-
-    private void procesarIndiceParaCargar(String entrada) {
-        try {
-            int indice = Integer.parseInt(entrada);
-            if (indice == 0) {
-                imprimir("Carga cancelada.");
-                modo = ModoEntrada.ESPERANDO_OPCION;
-                imprimirMenu();
-                return;
-            }
-            if (indice < 1 || indice > ultimaListaPartidas.size()) {
-                imprimir("ERROR: numero fuera de rango.");
-                modo = ModoEntrada.ESPERANDO_OPCION;
-                imprimirMenu();
-                return;
-            }
-            String nombre = ultimaListaPartidas.get(indice - 1);
-            try {
-                controlador.cargarPartida(nombre);
-            } catch (Exception ex) {
-                imprimir("ERROR al cargar: " + ex.getMessage());
-                modo = ModoEntrada.ESPERANDO_OPCION;
-                imprimirMenu();
-            }
-        } catch (NumberFormatException ex) {
-            imprimir("ERROR: no es un numero valido.");
-            modo = ModoEntrada.ESPERANDO_OPCION;
-            imprimirMenu();
-        }
     }
 
     private List<Integer> parsearValores(String entrada) {
@@ -395,7 +331,7 @@ public class VistaConsola implements Observador {
 
     private void imprimirMenu() {
         if (controlador.estaEnConfiguracion()) {
-            imprimir("Opciones:  [1] Agregar jugador   [2] Iniciar partida   [3] Cargar partida guardada");
+            imprimir("Opciones:  [1] Iniciar partida");
         } else if (controlador.estaEnCurso()) {
             imprimirMenuEnCurso();
         } else {
@@ -404,6 +340,11 @@ public class VistaConsola implements Observador {
     }
 
     private void imprimirMenuEnCurso() {
+        if (!controlador.esMiTurno()) {
+            imprimir("Esperando a " + controlador.getNombreJugadorActual()
+                    + ".   Opciones:  [3] Guardar partida");
+            return;
+        }
         if (controlador.esFaseInicial()) {
             imprimir("Opciones:  [1] Tirar dados   [3] Guardar partida");
         } else if (controlador.esFasePostTirada()) {
@@ -420,7 +361,7 @@ public class VistaConsola implements Observador {
     private void manejarJugadorAgregado() {
         List<String> nombres = controlador.getNombresJugadores();
         String ultimo = nombres.get(nombres.size() - 1);
-        imprimir("[+] Jugador agregado: " + ultimo
+        imprimir("[+] Jugador conectado: " + ultimo
                 + " (cantidad: " + nombres.size() + ")");
     }
 
@@ -486,20 +427,6 @@ public class VistaConsola implements Observador {
         imprimir("   Ganador: " + controlador.getNombreGanador()
                 + " con " + controlador.getPuntajeGanador() + " pts");
         imprimir("##############################");
-    }
-
-    private void manejarPartidaCargada() {
-        imprimir("");
-        imprimir("============================");
-        imprimir("   PARTIDA CARGADA");
-        imprimir("============================");
-        imprimir("Jugadores: " + nombresJugadoresCSV());
-        if (controlador.estaEnCurso()) {
-            imprimir("Turno actual: " + controlador.getNombreJugadorActual());
-        } else if (controlador.estaFinalizada()) {
-            imprimir("La partida cargada ya estaba finalizada. Ganador: " + controlador.getNombreGanador());
-        }
-        imprimir("");
     }
 
     private void mostrarEstadoCubilete() {

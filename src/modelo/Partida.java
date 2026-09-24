@@ -1,18 +1,18 @@
 package modelo;
 
+import ar.edu.unlu.rmimvc.observer.ObservableRemoto;
 import observer.Evento;
-import observer.Observable;
+import persistencia.GestorPartida;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Partida extends Observable implements Serializable {
+public class Partida extends ObservableRemoto implements IPartida, Serializable {
 
     private static final long serialVersionUID = 1L;
-
-    public static final int PUNTOS_PARA_GANAR = 10000;
-    public static final int MIN_JUGADORES = 2;
 
     private final List<Jugador> jugadores;
     private final Cubilete cubilete;
@@ -36,7 +36,8 @@ public class Partida extends Observable implements Serializable {
         this.ganador = null;
     }
 
-    public void agregarJugador(String nombre) {
+    @Override
+    public void agregarJugador(String nombre) throws RemoteException {
         if (estado != EstadoPartida.CONFIGURACION) {
             throw new IllegalStateException(
                     "Solo se pueden agregar jugadores antes de iniciar la partida.");
@@ -47,10 +48,11 @@ public class Partida extends Observable implements Serializable {
                     "Ya existe un jugador llamado '" + nuevo.getNombre() + "'.");
         }
         jugadores.add(nuevo);
-        notificar(Evento.JUGADOR_AGREGADO);
+        notificarObservadores(Evento.JUGADOR_AGREGADO);
     }
 
-    public void iniciar() {
+    @Override
+    public void iniciar() throws RemoteException {
         if (estado != EstadoPartida.CONFIGURACION) {
             throw new IllegalStateException("La partida ya fue iniciada o ya termino.");
         }
@@ -63,14 +65,31 @@ public class Partida extends Observable implements Serializable {
         turnoActual = new Turno(jugadores.get(indiceJugadorActual));
         ultimoResultado = null;
         estado = EstadoPartida.EN_CURSO;
-        notificar(Evento.PARTIDA_INICIADA);
+        notificarObservadores(Evento.PARTIDA_INICIADA);
     }
 
-    public void tirarDados() {
+    private void validarTurnoDe(String jugador) {
+        if (jugador == null || jugador.isBlank()) {
+            throw new IllegalArgumentException(
+                    "No se indico que jugador realiza la accion.");
+        }
+        if (turnoActual == null) {
+            throw new IllegalStateException("Todavia no hay un turno en juego.");
+        }
+        if (!turnoActual.getJugador().getNombre().equalsIgnoreCase(jugador.trim())) {
+            throw new IllegalStateException(
+                    "No es el turno de " + jugador.trim() + ": esta jugando "
+                            + turnoActual.getJugador().getNombre() + ".");
+        }
+    }
+
+    @Override
+    public void tirarDados(String jugador) throws RemoteException {
         if (estado != EstadoPartida.EN_CURSO) {
             throw new IllegalStateException(
                     "Solo se pueden tirar los dados con la partida en curso.");
         }
+        validarTurnoDe(jugador);
         FaseTurno fase = turnoActual.getFase();
         if (fase == FaseTurno.POST_TIRADA) {
             throw new IllegalStateException(
@@ -80,14 +99,16 @@ public class Partida extends Observable implements Serializable {
         cubilete.tirar();
         this.ultimoResultado = null;
         turnoActual.cambiarFase(FaseTurno.POST_TIRADA);
-        notificar(Evento.DADOS_TIRADOS);
+        notificarObservadores(Evento.DADOS_TIRADOS);
     }
 
-    public void seleccionarDados(List<Integer> indicesSeleccionados) {
+    @Override
+    public void seleccionarDados(String jugador, List<Integer> indicesSeleccionados) throws RemoteException {
         if (estado != EstadoPartida.EN_CURSO) {
             throw new IllegalStateException(
                     "Solo se pueden seleccionar dados con la partida en curso.");
         }
+        validarTurnoDe(jugador);
         if (turnoActual.getFase() != FaseTurno.POST_TIRADA) {
             throw new IllegalStateException(
                     "Solo se pueden seleccionar dados después de tirar.");
@@ -125,14 +146,16 @@ public class Partida extends Observable implements Serializable {
         }
 
         turnoActual.cambiarFase(FaseTurno.POST_SELECCION);
-        notificar(Evento.DADOS_SELECCIONADOS);
+        notificarObservadores(Evento.DADOS_SELECCIONADOS);
     }
 
-    public void pasarTurno() {
+    @Override
+    public void pasarTurno(String jugador) throws RemoteException {
         if (estado != EstadoPartida.EN_CURSO) {
             throw new IllegalStateException(
                     "Solo se puede pasar el turno con la partida en curso.");
         }
+        validarTurnoDe(jugador);
         if (turnoActual.getFase() != FaseTurno.POST_TIRADA) {
             throw new IllegalStateException(
                     "Solo se puede pasar el turno después de tirar los dados.");
@@ -142,15 +165,17 @@ public class Partida extends Observable implements Serializable {
                     "No se puede pasar el turno: hay combinaciones disponibles para seleccionar.");
         }
         turnoActual.perder();
-        notificar(Evento.TURNO_PERDIDO);
+        notificarObservadores(Evento.TURNO_PERDIDO);
         avanzarTurno();
     }
 
-    public void plantarse() {
+    @Override
+    public void plantarse(String jugador) throws RemoteException {
         if (estado != EstadoPartida.EN_CURSO) {
             throw new IllegalStateException(
                     "Solo se puede plantar con la partida en curso.");
         }
+        validarTurnoDe(jugador);
         if (turnoActual.getFase() != FaseTurno.POST_SELECCION) {
             throw new IllegalStateException(
                     "Solo se puede plantar después de haber seleccionado dados en este turno.");
@@ -162,19 +187,20 @@ public class Partida extends Observable implements Serializable {
 
         Jugador jugadorQueSePlanta = turnoActual.getJugador();
         jugadorQueSePlanta.sumarPuntos(turnoActual.getPuntosAcumulados());
-        notificar(Evento.JUGADOR_PLANTADO);
+        notificarObservadores(Evento.JUGADOR_PLANTADO);
 
         if (jugadorQueSePlanta.getPuntajeTotal() >= PUNTOS_PARA_GANAR) {
             this.ganador = jugadorQueSePlanta;
             this.estado = EstadoPartida.FINALIZADA;
-            notificar(Evento.PARTIDA_FINALIZADA);
+            notificarObservadores(Evento.PARTIDA_FINALIZADA);
             return;
         }
 
         avanzarTurno();
     }
 
-    public boolean hayCombinacionesPosibles() {
+    @Override
+    public boolean hayCombinacionesPosibles() throws RemoteException {
         if (turnoActual == null || turnoActual.getFase() != FaseTurno.POST_TIRADA) {
             return false;
         }
@@ -186,48 +212,55 @@ public class Partida extends Observable implements Serializable {
         return r.hayPuntos();
     }
 
-    private void avanzarTurno() {
+    private void avanzarTurno() throws RemoteException {
         indiceJugadorActual = (indiceJugadorActual + 1) % jugadores.size();
         turnoActual = new Turno(jugadores.get(indiceJugadorActual));
         cubilete.liberarTodos();
         ultimoResultado = null;
-        notificar(Evento.CAMBIO_TURNO);
+        notificarObservadores(Evento.CAMBIO_TURNO);
     }
 
-    public EstadoPartida getEstado() {
+    @Override
+    public EstadoPartida getEstado() throws RemoteException {
         return estado;
     }
 
-    public List<Jugador> getJugadores() {
+    @Override
+    public List<Jugador> getJugadores() throws RemoteException {
         return new ArrayList<>(jugadores);
     }
 
-    public Jugador getJugadorActual() {
+    @Override
+    public Jugador getJugadorActual() throws RemoteException {
         if (turnoActual == null) {
             return null;
         }
         return turnoActual.getJugador();
     }
 
-    public int getPuntosAcumuladosTurno() {
+    @Override
+    public int getPuntosAcumuladosTurno() throws RemoteException {
         if (turnoActual == null) {
             return 0;
         }
         return turnoActual.getPuntosAcumulados();
     }
 
-    public int getCantidadTiradasTurno() {
+    @Override
+    public int getCantidadTiradasTurno() throws RemoteException {
         if (turnoActual == null) {
             return 0;
         }
         return turnoActual.getCantidadDeTiradas();
     }
 
-    public List<Integer> getValoresDeLosDados() {
+    @Override
+    public List<Integer> getValoresDeLosDados() throws RemoteException {
         return cubilete.getValoresTodos();
     }
 
-    public List<Boolean> getReservasDeLosDados() {
+    @Override
+    public List<Boolean> getReservasDeLosDados() throws RemoteException {
         List<Boolean> reservas = new ArrayList<>();
         for (Dado dado : cubilete.getDados()) {
             reservas.add(dado.estaReservado());
@@ -235,22 +268,36 @@ public class Partida extends Observable implements Serializable {
         return reservas;
     }
 
-    public int cantidadDadosDisponibles() {
+    @Override
+    public int cantidadDadosDisponibles() throws RemoteException {
         return cubilete.cantidadDisponibles();
     }
 
-    public ResultadoTirada getUltimoResultado() {
+    @Override
+    public ResultadoTirada getUltimoResultado() throws RemoteException {
         return ultimoResultado;
     }
 
-    public Jugador getGanador() {
+    @Override
+    public Jugador getGanador() throws RemoteException {
         return ganador;
     }
 
-    public FaseTurno getFaseTurno() {
+    @Override
+    public FaseTurno getFaseTurno() throws RemoteException {
         if (turnoActual == null) {
             return null;
         }
         return turnoActual.getFase();
+    }
+
+    @Override
+    public void guardar(String nombreArchivo) throws RemoteException, IOException {
+        GestorPartida.guardar(this, nombreArchivo);
+    }
+
+    @Override
+    public List<String> listarPartidasGuardadas() throws RemoteException {
+        return GestorPartida.listarPartidasGuardadas();
     }
 }

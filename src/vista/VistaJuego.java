@@ -1,6 +1,7 @@
 package vista;
 
 import controlador.Controlador;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -29,6 +30,7 @@ public class VistaJuego implements Observador {
     private final BorderPane root;
 
     private final Label etiquetaTitulo;
+    private final Label etiquetaIdentidad;
     private final Label etiquetaJugadorActual;
     private final List<DadoView> vistasDados;
     private final ListView<String> listaJugadores;
@@ -52,6 +54,9 @@ public class VistaJuego implements Observador {
 
         this.etiquetaTitulo = new Label("Diez Mil con cinco dados");
         this.etiquetaTitulo.setFont(Font.font("System", FontWeight.BOLD, 22));
+
+        this.etiquetaIdentidad = new Label();
+        this.etiquetaIdentidad.setFont(Font.font("System", FontWeight.BOLD, 14));
 
         this.etiquetaJugadorActual = new Label("Esperando inicio...");
         this.etiquetaJugadorActual.setFont(Font.font(16));
@@ -101,7 +106,7 @@ public class VistaJuego implements Observador {
     }
 
     private BorderPane construirRoot() {
-        VBox topBox = new VBox(6, etiquetaTitulo, etiquetaJugadorActual);
+        VBox topBox = new VBox(6, etiquetaTitulo, etiquetaIdentidad, etiquetaJugadorActual);
         topBox.setAlignment(Pos.CENTER);
         topBox.setPadding(new Insets(16));
 
@@ -145,19 +150,21 @@ public class VistaJuego implements Observador {
 
     @Override
     public void actualizar(Evento evento) {
-        switch (evento) {
-            case JUGADOR_AGREGADO -> mostrarMensaje("Jugador agregado.");
-            case PARTIDA_INICIADA -> mostrarMensaje("¡Partida iniciada!");
-            case DADOS_TIRADOS -> mostrarMensaje(mensajePostTirada());
-            case DADOS_SELECCIONADOS -> mostrarMensaje(mensajeUltimaSeleccion());
-            case TURNO_PERDIDO -> mostrarMensaje("¡" + controlador.getNombreJugadorActual()
-                    + " perdio el turno!");
-            case JUGADOR_PLANTADO -> mostrarMensaje(controlador.getNombreJugadorActual()
-                    + " se planto.");
-            case CAMBIO_TURNO -> mostrarMensaje("Turno de " + controlador.getNombreJugadorActual() + ".");
-            case PARTIDA_FINALIZADA -> mostrarMensaje("¡Gano " + controlador.getNombreGanador() + "!");
-        }
-        refrescarUI();
+        Platform.runLater(() -> {
+            switch (evento) {
+                case JUGADOR_AGREGADO -> mostrarMensaje("Jugador agregado.");
+                case PARTIDA_INICIADA -> mostrarMensaje("¡Partida iniciada!");
+                case DADOS_TIRADOS -> mostrarMensaje(mensajePostTirada());
+                case DADOS_SELECCIONADOS -> mostrarMensaje(mensajeUltimaSeleccion());
+                case TURNO_PERDIDO -> mostrarMensaje("¡" + controlador.getNombreJugadorActual()
+                        + " perdio el turno!");
+                case JUGADOR_PLANTADO -> mostrarMensaje(controlador.getNombreJugadorActual()
+                        + " se planto.");
+                case CAMBIO_TURNO -> mostrarMensaje("Turno de " + controlador.getNombreJugadorActual() + ".");
+                case PARTIDA_FINALIZADA -> mostrarMensaje("¡Gano " + controlador.getNombreGanador() + "!");
+            }
+            refrescarUI();
+        });
     }
 
     private void refrescarUI() {
@@ -173,13 +180,17 @@ public class VistaJuego implements Observador {
     }
 
     private void actualizarEncabezado() {
+        etiquetaIdentidad.setText("Estás jugando como: " + controlador.getMiJugador());
         if (controlador.estaEnConfiguracion()) {
-            etiquetaJugadorActual.setText("Configuracion: agregue jugadores e inicie la partida.");
+            etiquetaJugadorActual.setText("Esperando que se inicie la partida.");
         } else if (controlador.estaFinalizada()) {
             etiquetaJugadorActual.setText("Partida finalizada. Ganador: "
                     + controlador.getNombreGanador());
+        } else if (controlador.esMiTurno()) {
+            etiquetaJugadorActual.setText("Es tu turno.");
         } else {
-            etiquetaJugadorActual.setText("Turno de: " + controlador.getNombreJugadorActual());
+            etiquetaJugadorActual.setText("Turno de: " + controlador.getNombreJugadorActual()
+                    + " (esperá tu turno)");
         }
     }
 
@@ -219,13 +230,15 @@ public class VistaJuego implements Observador {
     private void actualizarBotones() {
         boolean enCurso = controlador.estaEnCurso();
         botonGuardarPartida.setDisable(!enCurso);
-        if (!enCurso) {
+
+        if (!enCurso || !controlador.esMiTurno()) {
             botonTirar.setDisable(true);
             botonConfirmarSeleccion.setDisable(true);
             botonPasarTurno.setDisable(true);
             botonPlantarse.setDisable(true);
             return;
         }
+
         if (controlador.esFaseInicial()) {
             botonTirar.setDisable(false);
             botonConfirmarSeleccion.setDisable(true);
@@ -247,6 +260,9 @@ public class VistaJuego implements Observador {
     }
 
     private void alClickearDado(int indice) {
+        if (!controlador.esMiTurno()) {
+            return;
+        }
         if (!controlador.esFasePostTirada()) {
             return;
         }
@@ -332,7 +348,7 @@ public class VistaJuego implements Observador {
             }
             try {
                 controlador.guardarPartida(limpio);
-                mostrarMensaje("Partida guardada como \"" + limpio + "\".");
+                mostrarMensaje("Partida guardada como \"" + limpio + "\" en el servidor.");
             } catch (Exception ex) {
                 mostrarError("No se pudo guardar: " + ex.getMessage());
             }
